@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: valet-parking-api
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: MONGO_URI
+        sync: false
+      - key: DB_NAME
+        value: valet_parking
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SERVER_PORT
+        value: 8080

@@ -1,0 +1,29 @@
+# Go
+backend/server
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Flutter
+valet_parking_app/build/
+valet_parking_app/.dart_tool/
+valet_parking_app/.packages
+valet_parking_app/.pub-cache/
+valet_parking_app/.pub/
+valet_parking_app/*.iml
+valet_parking_app/.metadata
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+*.local
