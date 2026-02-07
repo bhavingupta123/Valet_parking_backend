@@ -168,3 +168,54 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 		"user":  user,
 	})
 }
+
+type UpdateProfileRequest struct {
+	Name      string `json:"name" binding:"required"`
+	VenueName string `json:"venue_name"`
+}
+
+func (h *AuthHandler) UpdateProfile(c *gin.Context) {
+	var req UpdateProfileRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	userID, _ := c.Get("user_id")
+	userObjID, _ := primitive.ObjectIDFromHex(userID.(string))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Build update document
+	updateDoc := bson.M{
+		"name": req.Name,
+	}
+	if req.VenueName != "" {
+		updateDoc["venue_name"] = req.VenueName
+	}
+
+	// Update user
+	_, err := h.db.Users().UpdateOne(ctx,
+		bson.M{"_id": userObjID},
+		bson.M{"$set": updateDoc},
+	)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update profile"})
+		return
+	}
+
+	// Get updated user
+	var user models.User
+	err = h.db.Users().FindOne(ctx, bson.M{"_id": userObjID}).Decode(&user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get updated profile"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Profile updated successfully",
+		"user":    user,
+	})
+}

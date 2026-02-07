@@ -63,6 +63,9 @@ func main() {
 		protected := api.Group("")
 		protected.Use(middleware.AuthMiddleware(cfg.JWTSecret))
 		{
+			// Profile route (any authenticated user)
+			protected.PUT("/auth/profile", authHandler.UpdateProfile)
+
 			// Vehicle routes (customer only)
 			vehicles := protected.Group("/vehicles")
 			vehicles.Use(middleware.RoleMiddleware(string(models.RoleCustomer)))
