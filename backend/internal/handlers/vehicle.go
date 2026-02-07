@@ -26,6 +26,8 @@ type AddVehicleRequest struct {
 	Make               string `json:"make" binding:"required"`
 	Model              string `json:"model" binding:"required"`
 	Color              string `json:"color" binding:"required"`
+	VehicleType        string `json:"vehicle_type" binding:"required"`
+	Photos             []string `json:"photos,omitempty"`
 }
 
 func (h *VehicleHandler) AddVehicle(c *gin.Context) {
@@ -57,6 +59,12 @@ func (h *VehicleHandler) AddVehicle(c *gin.Context) {
 		return
 	}
 
+	// Validate vehicle type
+	vehicleType := models.VehicleType(req.VehicleType)
+	if vehicleType != models.VehicleTypeCar && vehicleType != models.VehicleTypeBike && vehicleType != models.VehicleTypeThreeWheel {
+		vehicleType = models.VehicleTypeCar // Default to car
+	}
+
 	vehicle := models.Vehicle{
 		ID:                 primitive.NewObjectID(),
 		OwnerID:            ownerID,
@@ -64,6 +72,8 @@ func (h *VehicleHandler) AddVehicle(c *gin.Context) {
 		Make:               req.Make,
 		Model:              req.Model,
 		Color:              req.Color,
+		VehicleType:        vehicleType,
+		Photos:             req.Photos,
 		CreatedAt:          time.Now(),
 	}
 
