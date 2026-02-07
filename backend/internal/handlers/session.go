@@ -321,6 +321,53 @@ func (h *SessionHandler) RejectParking(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Parking rejected"})
 }
 
+// CancelSession allows customer to cancel the entire parking session
+func (h *SessionHandler) CancelSession(c *gin.Context) {
+	sessionID := c.Param("id")
+	sessionObjID, err := primitive.ObjectIDFromHex(sessionID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid session ID"})
+		return
+	}
+
+	userID, _ := c.Get("user_id")
+	userObjID, _ := primitive.ObjectIDFromHex(userID.(string))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Only allow cancelling sessions that are not already delivered or in pickup process
+	result, err := h.db.Sessions().UpdateOne(ctx,
+		bson.M{
+			"_id":         sessionObjID,
+			"customer_id": userObjID,
+			"status": bson.M{"$in": []models.SessionStatus{
+				models.StatusPending,
+				models.StatusPicked,
+				models.StatusParkingMoving,
+				models.StatusParked,
+			}},
+		},
+		bson.M{
+			"$set": bson.M{
+				"status": models.StatusCancelled,
+			},
+		},
+	)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to cancel session"})
+		return
+	}
+
+	if result.MatchedCount == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Session not found or cannot be cancelled (pickup may already be in progress)"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Session cancelled successfully"})
+}
+
 // CancelPickup allows customer to cancel a pickup request
 func (h *SessionHandler) CancelPickup(c *gin.Context) {
 	sessionID := c.Param("id")

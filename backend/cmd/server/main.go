@@ -101,6 +101,9 @@ func main() {
 				// Cancel pickup (customer only)
 				sessions.POST("/:id/cancel-pickup", middleware.RoleMiddleware(string(models.RoleCustomer)), sessionHandler.CancelPickup)
 
+				// Cancel entire session (customer only)
+				sessions.POST("/:id/cancel", middleware.RoleMiddleware(string(models.RoleCustomer)), sessionHandler.CancelSession)
+
 				// Verify delivery (valet only)
 				sessions.POST("/:id/verify-delivery", middleware.RoleMiddleware(string(models.RoleValet)), sessionHandler.VerifyDelivery)
 
