@@ -27,7 +27,6 @@ func NewSessionHandler(database *db.MongoDB) *SessionHandler {
 type CreateSessionRequest struct {
 	VehicleID  string `json:"vehicle_id" binding:"required"`
 	CustomerID string `json:"customer_id" binding:"required"`
-	VenueName  string `json:"venue_name" binding:"required"`
 }
 
 func (h *SessionHandler) CreateSession(c *gin.Context) {
@@ -53,6 +52,19 @@ func (h *SessionHandler) CreateSession(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	// Get valet's venue name
+	var valet models.User
+	err = h.db.Users().FindOne(ctx, bson.M{"_id": valetObjID}).Decode(&valet)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get valet info"})
+		return
+	}
+
+	if valet.VenueName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Valet has no venue assigned. Please update your profile."})
+		return
+	}
+
 	// Check if vehicle already has an active session
 	var existing models.ParkingSession
 	err = h.db.Sessions().FindOne(ctx, bson.M{
@@ -74,7 +86,7 @@ func (h *SessionHandler) CreateSession(c *gin.Context) {
 		VehicleID:    vehicleObjID,
 		CustomerID:   customerObjID,
 		ValetID:      valetObjID,
-		VenueName:    req.VenueName,
+		VenueName:    valet.VenueName, // Use valet's assigned venue
 		Status:       models.StatusPending, // Waiting for customer acceptance
 		ParkedAt:     time.Now(),
 	}
@@ -443,7 +455,8 @@ func (h *SessionHandler) VerifyDelivery(c *gin.Context) {
 }
 
 type UpdateStatusRequest struct {
-	Status string `json:"status" binding:"required"`
+	Status      string `json:"status" binding:"required"`
+	ParkingSpot string `json:"parking_spot"` // Optional, used when marking as parked
 }
 
 // UpdateStatus allows valet to update session status
@@ -498,6 +511,16 @@ func (h *SessionHandler) UpdateStatus(c *gin.Context) {
 		allowedFromStatuses = []models.SessionStatus{models.StatusRequested, models.StatusMoving, models.StatusAvailable}
 	}
 
+	// Build update document
+	updateDoc := bson.M{
+		"status": models.SessionStatus(req.Status),
+	}
+
+	// Add parking spot if provided and status is "parked"
+	if req.Status == "parked" && req.ParkingSpot != "" {
+		updateDoc["parking_spot"] = req.ParkingSpot
+	}
+
 	// Update session status
 	result, err := h.db.Sessions().UpdateOne(ctx,
 		bson.M{
@@ -505,9 +528,7 @@ func (h *SessionHandler) UpdateStatus(c *gin.Context) {
 			"status": bson.M{"$in": allowedFromStatuses},
 		},
 		bson.M{
-			"$set": bson.M{
-				"status": models.SessionStatus(req.Status),
-			},
+			"$set": updateDoc,
 		},
 	)
 

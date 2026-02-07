@@ -36,9 +36,10 @@ type SendOTPRequest struct {
 }
 
 type VerifyOTPRequest struct {
-	Phone string `json:"phone" binding:"required"`
-	OTP   string `json:"otp" binding:"required"`
-	Name  string `json:"name"`
+	Phone     string `json:"phone" binding:"required"`
+	OTP       string `json:"otp" binding:"required"`
+	Name      string `json:"name"`
+	VenueName string `json:"venue_name"` // Only for valets
 }
 
 func (h *AuthHandler) SendOTP(c *gin.Context) {
@@ -134,6 +135,7 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 			Phone:     req.Phone,
 			Name:      req.Name,
 			Role:      otpDoc.Role,
+			VenueName: req.VenueName, // Only used for valets
 			CreatedAt: time.Now(),
 		}
 		_, err = h.db.Users().InsertOne(ctx, user)

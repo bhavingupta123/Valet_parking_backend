@@ -18,6 +18,7 @@ type User struct {
 	Phone     string             `bson:"phone" json:"phone"`
 	Name      string             `bson:"name" json:"name"`
 	Role      Role               `bson:"role" json:"role"`
+	VenueName string             `bson:"venue_name,omitempty" json:"venue_name,omitempty"` // Only for valets
 	CreatedAt time.Time          `bson:"created_at" json:"created_at"`
 }
 

@@ -28,6 +28,7 @@ type ParkingSession struct {
 	CustomerID   primitive.ObjectID `bson:"customer_id" json:"customer_id"`
 	ValetID      primitive.ObjectID `bson:"valet_id" json:"valet_id"`
 	VenueName    string             `bson:"venue_name" json:"venue_name"`
+	ParkingSpot  string             `bson:"parking_spot,omitempty" json:"parking_spot,omitempty"` // e.g., "A-15", "Level 2 - Spot 34"
 	Status       SessionStatus      `bson:"status" json:"status"`
 	ParkedAt     time.Time          `bson:"parked_at" json:"parked_at"`
 	RequestedAt  *time.Time         `bson:"requested_at,omitempty" json:"requested_at,omitempty"`
