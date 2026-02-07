@@ -247,7 +247,7 @@ func (h *SessionHandler) AcceptParking(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Update session from pending to parked
+	// Update session from pending to picked (valet will then update to parking_moving -> parked)
 	result, err := h.db.Sessions().UpdateOne(ctx,
 		bson.M{
 			"_id":         sessionObjID,
@@ -256,7 +256,7 @@ func (h *SessionHandler) AcceptParking(c *gin.Context) {
 		},
 		bson.M{
 			"$set": bson.M{
-				"status": models.StatusParked,
+				"status": models.StatusPicked,
 			},
 		},
 	)
@@ -461,24 +461,48 @@ func (h *SessionHandler) UpdateStatus(c *gin.Context) {
 		return
 	}
 
-	// Validate status - only moving and available allowed for valet updates
+	// Validate status - parking flow (picked, parking_moving, parked) and pickup flow (moving, available)
 	validStatuses := map[string]bool{
-		"moving":    true,
-		"available": true,
+		"picked":         true,
+		"parking_moving": true,
+		"parked":         true,
+		"moving":         true,
+		"available":      true,
 	}
 	if !validStatuses[req.Status] {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid status. Must be: moving or available"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid status. Must be: picked, parking_moving, parked, moving, or available"})
 		return
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Update session status - only when pickup has been requested
+	// Determine which statuses can transition to the requested status
+	var allowedFromStatuses []models.SessionStatus
+
+	switch req.Status {
+	case "picked":
+		// Can only go to picked from pending (via accept) - but valet can also set it
+		allowedFromStatuses = []models.SessionStatus{models.StatusPending, models.StatusPicked}
+	case "parking_moving":
+		// Can go to parking_moving from picked
+		allowedFromStatuses = []models.SessionStatus{models.StatusPicked, models.StatusParkingMoving}
+	case "parked":
+		// Can go to parked from picked or parking_moving
+		allowedFromStatuses = []models.SessionStatus{models.StatusPicked, models.StatusParkingMoving, models.StatusParked}
+	case "moving":
+		// Can go to moving from requested (pickup flow)
+		allowedFromStatuses = []models.SessionStatus{models.StatusRequested, models.StatusMoving, models.StatusAvailable}
+	case "available":
+		// Can go to available from requested or moving (pickup flow)
+		allowedFromStatuses = []models.SessionStatus{models.StatusRequested, models.StatusMoving, models.StatusAvailable}
+	}
+
+	// Update session status
 	result, err := h.db.Sessions().UpdateOne(ctx,
 		bson.M{
 			"_id":    sessionObjID,
-			"status": bson.M{"$in": []models.SessionStatus{models.StatusRequested, models.StatusMoving, models.StatusAvailable}},
+			"status": bson.M{"$in": allowedFromStatuses},
 		},
 		bson.M{
 			"$set": bson.M{
@@ -493,7 +517,7 @@ func (h *SessionHandler) UpdateStatus(c *gin.Context) {
 	}
 
 	if result.MatchedCount == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Session not found or cannot update status"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Session not found or cannot update status from current state"})
 		return
 	}
 

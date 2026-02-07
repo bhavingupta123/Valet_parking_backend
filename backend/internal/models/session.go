@@ -9,14 +9,16 @@ import (
 type SessionStatus string
 
 const (
-	StatusPending   SessionStatus = "pending"   // Waiting for customer acceptance
-	StatusParked    SessionStatus = "parked"    // Customer accepted, car is parked
-	StatusRequested SessionStatus = "requested" // Customer requested pickup
-	StatusMoving    SessionStatus = "moving"    // Valet is getting the car
-	StatusAvailable SessionStatus = "available" // Car is ready for pickup
-	StatusDelivered SessionStatus = "delivered" // Car delivered to customer
-	StatusCancelled SessionStatus = "cancelled" // Request cancelled
-	StatusInTransit SessionStatus = "in_transit"
+	StatusPending       SessionStatus = "pending"        // Waiting for customer acceptance
+	StatusPicked        SessionStatus = "picked"         // Customer accepted, valet picked up car
+	StatusParkingMoving SessionStatus = "parking_moving" // Valet moving car to parking spot
+	StatusParked        SessionStatus = "parked"         // Car is parked
+	StatusRequested     SessionStatus = "requested"      // Customer requested pickup
+	StatusMoving        SessionStatus = "moving"         // Valet is getting the car
+	StatusAvailable     SessionStatus = "available"      // Car is ready for pickup
+	StatusDelivered     SessionStatus = "delivered"      // Car delivered to customer
+	StatusCancelled     SessionStatus = "cancelled"      // Request cancelled
+	StatusInTransit     SessionStatus = "in_transit"
 )
 
 type ParkingSession struct {
